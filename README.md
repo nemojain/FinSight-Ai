@@ -108,13 +108,4 @@ jupyter notebook
 
 ---
 
-## 👤 Author
-
-**Nimanshu Jain**  
-🎓 MS Information Technology & Management — UT Dallas  
-📜 Graduate Certificate in Business Analytics & Data Mining  
-🔗 [LinkedIn](https://linkedin.com/in/nimanshu-jain) · [GitHub](https://github.com/nemojain)
-
----
-
 ⭐ *If you found this project useful, consider giving it a star!*
