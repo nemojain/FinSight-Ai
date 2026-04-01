@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinSight AI — Market Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --card: #1e2130;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+    --text: #e8eaf0; --muted: #8b8fa8; --dim: #555870;
+    --green: #1D9E75; --green-dim: rgba(29,158,117,0.15);
+    --red: #D85A30; --red-dim: rgba(216,90,48,0.15);
+    --blue: #378ADD; --blue-dim: rgba(55,138,221,0.15);
+    --amber: #EF9F27; --purple: #7F77DD;
+    --radius: 10px; --radius-lg: 14px;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+  .app { max-width: 1400px; margin: 0 auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 16px; }
+
+  /* topbar */
+  .topbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-icon { width: 36px; height: 36px; background: var(--green); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .brand-icon svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; }
+  .brand-name { font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+  .brand-sub { font-size: 12px; color: var(--muted); }
+  .data-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; background: var(--green-dim); border: 1px solid rgba(29,158,117,0.3); font-size: 12px; font-weight: 500; color: var(--green); }
+  .data-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  /* loading */
+  .load-wrap { min-width: 200px; }
+  .load-bar { height: 3px; background: var(--surface); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
+  .load-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.15s; }
+  .load-label { font-size: 11px; color: var(--muted); }
+
+  /* tickers */
+  .ticker-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tick { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; background: var(--surface); transition: all 0.15s; font-size: 13px; color: var(--muted); }
+  .tick:hover { border-color: var(--border2); color: var(--text); }
+  .tick.active { background: var(--green); border-color: var(--green); color: #fff; }
+  .tick .sym { font-weight: 600; }
+  .tick .chg { font-size: 11px; }
+  .tick.active .chg { color: rgba(255,255,255,0.8); }
+
+  /* metrics */
+  .metrics { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 10px; }
+  @media(max-width:900px){ .metrics { grid-template-columns: repeat(3,1fr); } }
+  .mc { background: var(--surface); border-radius: var(--radius); padding: 12px 14px; border: 1px solid var(--border); }
+  .mc-label { font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+  .mc-val { font-size: 20px; font-weight: 600; color: var(--text); }
+  .mc-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-top: 4px; }
+  .up { background: var(--green-dim); color: var(--green); }
+  .dn { background: var(--red-dim); color: var(--red); }
+  .nu { background: var(--blue-dim); color: var(--blue); }
+
+  /* cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+  .card-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .card-sub { font-size: 11px; color: var(--muted); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media(max-width:700px){ .two-col,.three-col{ grid-template-columns:1fr; } }
+
+  /* range tabs */
+  .rtabs { display: flex; gap: 3px; }
+  .rtab { padding: 3px 9px; border-radius: 8px; border: 1px solid transparent; font-size: 11px; cursor: pointer; background: transparent; color: var(--muted); font-family: var(--font); transition: all 0.12s; }
+  .rtab:hover { color: var(--text); }
+  .rtab.active { background: var(--surface); color: var(--text); border-color: var(--border2); }
+
+  /* stat rows */
+  .stat-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { color: var(--muted); }
+  .stat-val { font-weight: 500; color: var(--text); }
+
+  /* alloc rows */
+  .alloc-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .alloc-row:last-child { border-bottom: none; }
+  .alloc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .alloc-name { flex: 1; color: var(--text); }
+  .alloc-bar { flex: 1.5; height: 4px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+  .alloc-fill { height: 100%; border-radius: 3px; }
+  .alloc-pct { color: var(--muted); min-width: 36px; text-align: right; }
+
+  /* news */
+  .news-item { padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .news-item:last-child { border-bottom: none; }
+  .news-title { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 3px; line-height: 1.4; }
+  .news-meta { font-size: 11px; color: var(--muted); }
+  .news-pill { display: inline-block; padding: 1px 6px; border-radius: 6px; font-size: 10px; margin-right: 4px; }
+  .pill-bull { background: var(--green-dim); color: var(--green); }
+  .pill-bear { background: var(--red-dim); color: var(--red); }
+  .pill-neut { background: var(--blue-dim); color: var(--blue); }
+
+  /* AI panel */
+  .ai-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .ai-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .ai-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 1.8s infinite; }
+  .ai-lbl { font-size: 13px; font-weight: 600; color: var(--text); }
+  .ai-tag { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .qrow { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .qbtn { padding: 4px 10px; border-radius: 12px; border: 1px solid var(--border2); font-size: 11px; cursor: pointer; background: transparent; color: var(--muted); font-family: var(--font); transition: all 0.12s; }
+  .qbtn:hover { background: var(--surface); color: var(--text); }
+  .ai-irow { display: flex; gap: 8px; margin-bottom: 10px; }
+  .ai-inp { flex: 1; border: 1px solid var(--border2); border-radius: var(--radius); padding: 8px 12px; font-size: 13px; background: var(--surface); color: var(--text); font-family: var(--font); outline: none; transition: border-color 0.15s; }
+  .ai-inp:focus { border-color: var(--green); }
+  .ai-inp::placeholder { color: var(--dim); }
+  .ai-btn { padding: 8px 16px; border-radius: var(--radius); background: var(--green); border: none; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; font-family: var(--font); transition: background 0.15s; }
+  .ai-btn:hover { background: #0F6E56; }
+  .ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .ai-out { min-height: 70px; font-size: 13px; line-height: 1.75; color: var(--text); background: var(--surface); border-radius: var(--radius); padding: 12px 14px; white-space: pre-wrap; border: 1px solid var(--border); }
+  .ai-ph { color: var(--dim); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">FinSight AI</div>
+        <div class="brand-sub">Tick-level market analytics · Powered by Claude</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div id="loadWrap" class="load-wrap">
+        <div class="load-bar"><div class="load-fill" id="loadFill" style="width:0%"></div></div>
+        <div class="load-label" id="loadLabel">Generating tick data...</div>
+      </div>
+      <div class="data-badge" id="dataBadge" style="display:none;">
+        <div class="data-dot"></div><span id="recCount">0</span> tick records
+      </div>
+    </div>
+  </div>
+
+  <div class="ticker-row" id="tickerRow"></div>
+  <div class="metrics" id="metricsGrid"></div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title-row">
+        <span class="card-title">Price history — <span id="chartSym">AAPL</span></span>
+        <div class="rtabs">
+          <button class="rtab active" onclick="setRange('1D',this)">1D</button>
+          <button class="rtab" onclick="setRange('1W',this)">1W</button>
+          <button class="rtab" onclick="setRange('1M',this)">1M</button>
+          <button class="rtab" onclick="setRange('1Y',this)">1Y</button>
+          <button class="rtab" onclick="setRange('2Y',this)">2Y</button>
+        </div>
+      </div>
+      <div style="position:relative;width:100%;height:210px;"><canvas id="priceC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title-row">
+        <span class="card-title">Volume & RSI</span>
+        <span class="card-sub" id="rsiLabel">RSI: —</span>
+      </div>
+      <div style="position:relative;width:100%;height:210px;"><canvas id="volC"></canvas></div>
+    </div>
+  </div>
+
+  <div class="three-col">
+    <div class="card">
+      <div class="card-title">Statistical summary</div>
+      <div id="statTable"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Return distribution</div>
+      <div style="position:relative;width:100%;height:190px;"><canvas id="distC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Rolling 30-day volatility</div>
+      <div style="position:relative;width:100%;height:190px;"><canvas id="volRollC"></canvas></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Correlation matrix</div>
+      <div style="position:relative;width:100%;height:190px;"><canvas id="corrC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Portfolio allocation</div>
+      <div id="allocList"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Market news</div>
+    <div id="newsList" style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;"></div>
+  </div>
+
+  <div class="ai-panel">
+    <div class="ai-hdr">
+      <div class="ai-dot"></div>
+      <span class="ai-lbl">AI Market Analyst</span>
+      <span class="ai-tag">claude-sonnet-4-20250514 · <span id="aiRec">0</span> records in context</span>
+    </div>
+    <div class="qrow">
+      <button class="qbtn" onclick="askQ(this)">Analyze AAPL tick patterns</button>
+      <button class="qbtn" onclick="askQ(this)">Which ticker has highest volatility?</button>
+      <button class="qbtn" onclick="askQ(this)">Interpret the return distribution</button>
+      <button class="qbtn" onclick="askQ(this)">What does Sharpe ratio of 3.1 mean?</button>
+      <button class="qbtn" onclick="askQ(this)">Portfolio diversification assessment</button>
+    </div>
+    <div class="ai-irow">
+      <input class="ai-inp" id="aiInp" placeholder="Ask about tick patterns, volatility, correlations, or any financial concept..." />
+      <button class="ai-btn" id="aiBtn" onclick="sendAI()">Analyze</button>
+    </div>
+    <div class="ai-out" id="aiOut"><span class="ai-ph">AI analyst ready. Dataset loading — ask anything once loaded.</span></div>
+  </div>
+</div>
+
+<script>
+const TICKERS=[
+  {sym:'AAPL',base:211,mu:0.12,sigma:0.22,vol:45000,color:'#1D9E75'},
+  {sym:'MSFT',base:415,mu:0.14,sigma:0.20,vol:22000,color:'#378ADD'},
+  {sym:'GOOGL',base:183,mu:0.11,sigma:0.24,vol:18000,color:'#7F77DD'},
+  {sym:'NVDA',base:876,mu:0.28,sigma:0.42,vol:35000,color:'#EF9F27'},
+  {sym:'META',base:528,mu:0.18,sigma:0.30,vol:28000,color:'#D85A30'},
+];
+const TRADING_DAYS=252,MPD=390;
+const dt=1/(TRADING_DAYS*MPD);
+let tickData={},activeSym='AAPL',activeRange='1D',charts={},totalRecords=0,statsCache={};
+
+function lcg(seed){let s=seed;return()=>{s=(s*1664525+1013904223)&0xffffffff;return(s>>>0)/0xffffffff;};}
+
+function genTicks(t,seed){
+  const rng=lcg(seed),n=TRADING_DAYS*MPD;
+  const prices=new Float32Array(n),vols=new Int32Array(n),logRets=new Float32Array(n);
+  let p=t.base;
+  for(let i=0;i<n;i++){
+    const u1=rng()+1e-10,u2=rng();
+    const z=Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
+    const lr=(t.mu-0.5*t.sigma*t.sigma)*dt+t.sigma*Math.sqrt(dt)*z;
+    p*=Math.exp(lr);
+    prices[i]=p; logRets[i]=lr;
+    vols[i]=Math.floor((rng()*t.vol*1.5+t.vol*0.3)*(1+3*Math.abs(z)));
+  }
+  return{prices,vols,logRets,n};
+}
+
+function getStats(sym){
+  if(statsCache[sym])return statsCache[sym];
+  const{prices,logRets,vols,n}=tickData[sym];
+  const annF=TRADING_DAYS*MPD;
+  let sumP=0,minP=Infinity,maxP=-Infinity,sumR=0,sumV=0;
+  for(let i=0;i<n;i++){sumP+=prices[i];if(prices[i]<minP)minP=prices[i];if(prices[i]>maxP)maxP=prices[i];sumR+=logRets[i];sumV+=vols[i];}
+  const meanR=sumR/n;
+  let varR=0;
+  for(let i=0;i<n;i++)varR+=(logRets[i]-meanR)**2;
+  const stdR=Math.sqrt(varR/n);
+  const annRet=meanR*annF*100;
+  const annVol=stdR*Math.sqrt(annF)*100;
+  const sharpe=annRet/annVol;
+  const sorted=[...logRets].sort((a,b)=>a-b);
+  const var95=sorted[Math.floor(n*0.05)]*100;
+  let cumMax=0,cum=1,maxDD=0;
+  for(let i=0;i<n;i++){cum*=(1+logRets[i]);if(cum>cumMax)cumMax=cum;const dd=(cum-cumMax)/cumMax;if(dd<maxDD)maxDD=dd;}
+  const res={n,meanPrice:sumP/n,minP,maxP,annRet,annVol,sharpe,var95,maxDD:maxDD*100,totalVol:sumV,logRets};
+  statsCache[sym]=res;return res;
+}
+
+function getSlice(sym,range){
+  const{prices,vols,n}=tickData[sym];
+  const sizes={'1D':MPD,'1W':MPD*5,'1M':MPD*21,'1Y':MPD*TRADING_DAYS,'2Y':n};
+  const size=Math.min(sizes[range]||MPD,n);
+  const start=n-size,step=Math.max(1,Math.floor(size/300));
+  const ps=[],vs=[];
+  for(let i=start;i<n;i+=step){ps.push(+prices[i].toFixed(2));vs.push(vols[i]);}
+  return{ps,vs,size};
+}
+
+function buildTickerRow(){
+  document.getElementById('tickerRow').innerHTML=TICKERS.map(t=>{
+    const st=statsCache[t.sym];
+    const last=st?+tickData[t.sym].prices[tickData[t.sym].n-1].toFixed(2):t.base;
+    const pct=st?((last-t.base)/t.base*100).toFixed(2):'0.00';
+    const up=parseFloat(pct)>=0;
+    return`<button class="tick${t.sym===activeSym?' active':''}" onclick="selectSym('${t.sym}',this)">
+      <span class="sym">${t.sym}</span>
+      <span class="chg" style="${t.sym!==activeSym?(up?'color:#1D9E75':'color:#D85A30'):''}">${up?'+':''}${pct}%</span>
+    </button>`;
+  }).join('');
+}
+
+function buildMetrics(){
+  const st=getStats(activeSym);
+  const t=TICKERS.find(x=>x.sym===activeSym);
+  const last=+tickData[activeSym].prices[tickData[activeSym].n-1].toFixed(2);
+  const pct=((last-t.base)/t.base*100).toFixed(2);
+  const up=parseFloat(pct)>=0;
+  const items=[
+    {l:'Last price',v:'$'+last.toLocaleString(),b:(up?'+':'')+pct+'%',c:up?'up':'dn'},
+    {l:'Mean price (2Y)',v:'$'+st.meanPrice.toFixed(2),b:'avg tick',c:'nu'},
+    {l:'All-time high',v:'$'+st.maxP.toFixed(0),b:'simulation',c:'up'},
+    {l:'All-time low',v:'$'+st.minP.toFixed(0),b:'simulation',c:'dn'},
+    {l:'Sharpe ratio',v:st.sharpe.toFixed(3),b:st.sharpe>1?'strong':'moderate',c:st.sharpe>1?'up':'nu'},
+    {l:'Ann. volatility',v:st.annVol.toFixed(1)+'%',b:'annualized',c:'nu'},
+  ];
+  document.getElementById('metricsGrid').innerHTML=items.map(m=>`
+    <div class="mc"><div class="mc-label">${m.l}</div><div class="mc-val">${m.v}</div>
+    <span class="mc-badge ${m.c}">${m.b}</span></div>`).join('');
+}
+
+function buildStatTable(){
+  const st=getStats(activeSym);
+  const rows=[
+    ['Tick count',st.n.toLocaleString()],
+    ['Ann. return',st.annRet.toFixed(2)+'%'],
+    ['Ann. volatility',st.annVol.toFixed(2)+'%'],
+    ['Sharpe ratio',st.sharpe.toFixed(3)],
+    ['VaR 95%',st.var95.toFixed(4)+'%'],
+    ['Max drawdown',st.maxDD.toFixed(2)+'%'],
+    ['Total volume',(st.totalVol/1e6).toFixed(1)+'M shares'],
+  ];
+  document.getElementById('statTable').innerHTML=rows.map(r=>`
+    <div class="stat-row"><span class="stat-label">${r[0]}</span><span class="stat-val">${r[1]}</span></div>`).join('');
+}
+
+function buildPriceChart(){
+  const{ps,size}=getSlice(activeSym,activeRange);
+  const t=TICKERS.find(x=>x.sym===activeSym);
+  const up=ps[ps.length-1]>=ps[0];
+  document.getElementById('chartSym').textContent=activeSym;
+  if(charts.price)charts.price.destroy();
+  charts.price=new Chart(document.getElementById('priceC'),{
+    type:'line',
+    data:{labels:ps.map((_,i)=>i),datasets:[{data:ps,borderColor:up?'#1D9E75':'#D85A30',borderWidth:1.5,
+      backgroundColor:up?'rgba(29,158,117,0.08)':'rgba(216,90,48,0.08)',fill:true,tension:0.3,pointRadius:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{display:false},y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#8b8fa8',font:{size:10},callback:v=>'$'+v.toFixed(0)}}}}
+  });
+}
+
+function buildVolChart(){
+  const{vs}=getSlice(activeSym,activeRange);
+  const rsiData=Array.from({length:vs.length},()=>+(40+Math.random()*30).toFixed(1));
+  const rsiVal=rsiData[rsiData.length-1];
+  document.getElementById('rsiLabel').textContent='RSI: '+rsiVal.toFixed(1);
+  if(charts.vol)charts.vol.destroy();
+  charts.vol=new Chart(document.getElementById('volC'),{
+    type:'bar',
+    data:{labels:vs.map((_,i)=>i),datasets:[
+      {data:vs,backgroundColor:'rgba(55,138,221,0.35)',borderRadius:1,label:'Volume'},
+      {data:rsiData,type:'line',borderColor:'#EF9F27',borderWidth:1.5,tension:0.4,pointRadius:0,yAxisID:'y2',label:'RSI'},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{display:false},
+        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#8b8fa8',font:{size:10}}},
+        y2:{position:'right',min:0,max:100,grid:{display:false},ticks:{color:'#8b8fa8',font:{size:10}}}}}
+  });
+}
+
+function buildDistChart(){
+  const st=getStats(activeSym);
+  const rets=st.logRets;
+  const bins=40,minR=-0.02,maxR=0.02,step=(maxR-minR)/bins;
+  const counts=new Array(bins).fill(0);
+  for(let i=0;i<rets.length;i++){const idx=Math.min(bins-1,Math.max(0,Math.floor((rets[i]-minR)/step)));counts[idx]++;}
+  const labels=Array.from({length:bins},(_,i)=>((minR+i*step)*100).toFixed(2));
+  if(charts.dist)charts.dist.destroy();
+  charts.dist=new Chart(document.getElementById('distC'),{
+    type:'bar',
+    data:{labels,datasets:[{data:counts,backgroundColor:labels.map(l=>parseFloat(l)>=0?'rgba(29,158,117,0.6)':'rgba(216,90,48,0.5)'),borderRadius:1,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{display:false},y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#8b8fa8',font:{size:10}}}}}
+  });
+}
+
+function buildRollingVol(){
+  const{prices,n}=tickData[activeSym];
+  const win=MPD*30,step=Math.floor(win/40);
+  const vols=[];
+  for(let i=win;i<n;i+=step){
+    let sum=0,mean=0;
+    for(let j=i-win;j<i;j++)mean+=prices[j];
+    mean/=win;
+    for(let j=i-win;j<i;j++)sum+=(prices[j]-mean)**2;
+    vols.push(+(Math.sqrt(sum/win)*Math.sqrt(TRADING_DAYS*MPD)*100).toFixed(2));
+  }
+  if(charts.rolVol)charts.rolVol.destroy();
+  charts.rolVol=new Chart(document.getElementById('volRollC'),{
+    type:'line',
+    data:{labels:vols.map((_,i)=>i),datasets:[{data:vols,borderColor:'#EF9F27',borderWidth:1.5,fill:false,tension:0.3,pointRadius:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{display:false},y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#8b8fa8',font:{size:10},callback:v=>v.toFixed(0)+'%'}}}}
+  });
+}
+
+function buildCorrChart(){
+  const syms=TICKERS.map(t=>t.sym);
+  const corrData=[],bgColors=[];
+  for(let i=0;i<syms.length;i++){
+    for(let j=0;j<syms.length;j++){
+      if(i===j){corrData.push({x:j,y:i,v:1});bgColors.push('rgba(29,158,117,0.85)');continue;}
+      const pa=tickData[syms[i]].prices,pb=tickData[syms[j]].prices;
+      const n=Math.min(pa.length,pb.length),step=Math.floor(n/500);
+      let sA=0,sB=0,cnt=0;
+      for(let k=0;k<n;k+=step){sA+=pa[k];sB+=pb[k];cnt++;}
+      const mA=sA/cnt,mB=sB/cnt;
+      let cov=0,vA=0,vB=0;
+      for(let k=0;k<n;k+=step){cov+=(pa[k]-mA)*(pb[k]-mB);vA+=(pa[k]-mA)**2;vB+=(pb[k]-mB)**2;}
+      const v=+(cov/Math.sqrt(vA*vB)).toFixed(2);
+      corrData.push({x:j,y:i,v});
+      bgColors.push(v>0.7?'rgba(29,158,117,0.8)':v>0.4?'rgba(55,138,221,0.5)':'rgba(136,135,128,0.3)');
+    }
+  }
+  if(charts.corr)charts.corr.destroy();
+  charts.corr=new Chart(document.getElementById('corrC'),{
+    type:'scatter',
+    data:{datasets:[{data:corrData.map(d=>({x:d.x,y:d.y})),backgroundColor:bgColors,pointRadius:20,pointStyle:'rect'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>syms[ctx.raw.x]+'/'+syms[ctx.raw.y]+': '+corrData[ctx.dataIndex].v}}},
+      scales:{x:{min:-0.5,max:4.5,ticks:{callback:v=>syms[v]??'',font:{size:9},color:'#8b8fa8'},grid:{display:false}},
+        y:{min:-0.5,max:4.5,reverse:true,ticks:{callback:v=>syms[v]??'',font:{size:9},color:'#8b8fa8'},grid:{display:false}}}}
+  });
+}
+
+function buildAlloc(){
+  const allocs=[
+    {name:'AAPL',pct:25,color:'#1D9E75'},{name:'MSFT',pct:22,color:'#378ADD'},
+    {name:'GOOGL',pct:20,color:'#7F77DD'},{name:'NVDA',pct:18,color:'#EF9F27'},
+    {name:'META',pct:15,color:'#D85A30'},
+  ];
+  document.getElementById('allocList').innerHTML=allocs.map(a=>`
+    <div class="alloc-row">
+      <span class="alloc-dot" style="background:${a.color};"></span>
+      <span class="alloc-name">${a.name}</span>
+      <div class="alloc-bar"><div class="alloc-fill" style="width:${a.pct*3}%;background:${a.color};"></div></div>
+      <span class="alloc-pct">${a.pct}%</span>
+    </div>`).join('');
+}
+
+function buildNews(){
+  const news=[
+    {title:'Fed holds rates steady, signals one cut in 2025',src:'Reuters',time:'2h ago',s:'neut'},
+    {title:'NVDA beats Q1 estimates on AI chip demand surge',src:'Bloomberg',time:'4h ago',s:'bull'},
+    {title:'Treasury yields rise on stronger jobs data',src:'WSJ',time:'6h ago',s:'bear'},
+    {title:'Apple Vision Pro 2 leaks boost AAPL pre-market',src:'CNBC',time:'8h ago',s:'bull'},
+    {title:'Meta AI investments weigh on quarterly margins',src:'FT',time:'10h ago',s:'bear'},
+    {title:'GOOGL cloud revenue beats expectations in Q1',src:'Reuters',time:'12h ago',s:'bull'},
+  ];
+  const cls={bull:'pill-bull',bear:'pill-bear',neut:'pill-neut'};
+  const lbl={bull:'bullish',bear:'bearish',neut:'neutral'};
+  document.getElementById('newsList').innerHTML=news.map(n=>`
+    <div class="news-item">
+      <div class="news-title">${n.title}</div>
+      <div class="news-meta"><span class="news-pill ${cls[n.s]}">${lbl[n.s]}</span>${n.src} · ${n.time}</div>
+    </div>`).join('');
+}
+
+function selectSym(sym){activeSym=sym;buildTickerRow();buildMetrics();buildStatTable();buildPriceChart();buildVolChart();buildDistChart();buildRollingVol();}
+function setRange(r,el){activeRange=r;document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('active'));el.classList.add('active');buildPriceChart();buildVolChart();}
+
+async function sendAI(){
+  const inp=document.getElementById('aiInp'),btn=document.getElementById('aiBtn'),out=document.getElementById('aiOut');
+  const q=inp.value.trim();if(!q)return;
+  btn.disabled=true;btn.textContent='...';
+  out.innerHTML='<span class="ai-ph">Analyzing...</span>';
+  const st=getStats(activeSym);
+  const ctx=`You are a quantitative analyst AI. You have computed the following from ${totalRecords.toLocaleString()} tick records (2 years of minute-level data for 5 tickers):
+Active ticker: ${activeSym}
+- Tick count: ${st.n.toLocaleString()}
+- Ann. Return: ${st.annRet.toFixed(2)}%
+- Ann. Volatility: ${st.annVol.toFixed(2)}%
+- Sharpe Ratio: ${st.sharpe.toFixed(3)}
+- VaR 95%: ${st.var95.toFixed(4)}%
+- Max Drawdown: ${st.maxDD.toFixed(2)}%
+- Total Volume: ${(st.totalVol/1e6).toFixed(1)}M shares
+Tickers: AAPL, MSFT, GOOGL, NVDA, META — 2 years of GBM-simulated minute data.
+Respond as a professional quant analyst. Be specific, cite numbers, under 160 words. Date: March 31 2026.`;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+        system:ctx,messages:[{role:'user',content:q}]})
+    });
+    const data=await resp.json();
+    out.textContent=data.content?.map(b=>b.text||'').join('')||'No response.';
+    inp.value='';
+  }catch(e){out.innerHTML='<span style="color:#D85A30;">Connection error. Please try again.</span>';}
+  btn.disabled=false;btn.textContent='Analyze';
+}
+
+function askQ(el){document.getElementById('aiInp').value=el.textContent;sendAI();}
+document.getElementById('aiInp').addEventListener('keydown',e=>{if(e.key==='Enter')sendAI();});
+
+function init(){
+  const fill=document.getElementById('loadFill'),label=document.getElementById('loadLabel');
+  let i=0;
+  function next(){
+    if(i>=TICKERS.length){
+      totalRecords=TICKERS.reduce((s,t)=>s+tickData[t.sym].n,0);
+      document.getElementById('recCount').textContent=totalRecords.toLocaleString()+'+';
+      document.getElementById('aiRec').textContent=totalRecords.toLocaleString();
+      document.getElementById('loadWrap').style.display='none';
+      document.getElementById('dataBadge').style.display='inline-flex';
+      buildTickerRow();buildMetrics();buildStatTable();
+      buildPriceChart();buildVolChart();buildDistChart();
+      buildRollingVol();buildCorrChart();buildAlloc();buildNews();
+      return;
+    }
+    const t=TICKERS[i];
+    label.textContent='Generating '+t.sym+' ticks...';
+    fill.style.width=Math.round((i/TICKERS.length)*100)+'%';
+    setTimeout(()=>{tickData[t.sym]=genTicks(t,(i+1)*42837);i++;next();},10);
+  }
+  next();
+}
+init();
+</script>
+</body>
+</html>
