@@ -1,6 +1,6 @@
-# 📈 FinSight AI — Quantitative Market Simulation Engine
+# 📈 FinSight AI - Quantitative Market Simulation Engine
 
-> **GBM-powered tick-level analytics platform** simulating **491,400+ minute-level price records** across 5 major tickers using Geometric Brownian Motion — the same mathematical model underlying Black-Scholes options pricing. Built with Python, Pandas, Plotly, and the Anthropic Claude API.
+> **GBM-powered tick-level analytics platform** simulating **491,400+ minute-level price records** across 5 major tickers using Geometric Brownian Motion - the same mathematical model underlying Black-Scholes options pricing. Built with Python, Pandas, Plotly, and the Anthropic Claude API.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-2.0+-150458?style=flat&logo=pandas&logoColor=white)
@@ -16,18 +16,18 @@
 
 ## 🧠 Why Simulation?
 
-Geometric Brownian Motion is not just "fake data" — it is the **industry-standard stochastic model** used in:
+Geometric Brownian Motion is not just "fake data" - it is the **industry-standard stochastic model** used in:
 - **Black-Scholes options pricing** (the formula that won a Nobel Prize in Economics)
 - **Monte Carlo risk simulations** at hedge funds and investment banks
 - **Stress testing** at financial institutions under Basel III regulatory frameworks
 
-Building GBM from scratch in NumPy — without using any finance library — demonstrates a deeper understanding of the mathematics behind market behavior than simply loading a CSV. The simulation parameters (μ, σ) are calibrated to reflect realistic market characteristics for each ticker.
+Building GBM from scratch in NumPy - without using any finance library. Demonstrates a deeper understanding of the mathematics behind market behavior than simply loading a CSV. The simulation parameters (μ, σ) are calibrated to reflect realistic market characteristics for each ticker.
 
 ---
 
 ## 🎯 What This Project Does
 
-- 🔬 **Implements GBM from scratch** in NumPy — no finance libraries used, pure mathematical modeling
+- 🔬 **Implements GBM from scratch** in NumPy - no finance libraries used, pure mathematical modeling
 - 📊 **Generates 491,400+ simulated minute-level tick records** across 5 tickers over 2 years
 - 📉 **Computes institutional risk metrics**: Sharpe ratio, VaR 95%/99%, Max Drawdown, Rolling Volatility
 - 🕯️ **Interactive candlestick charts** with MA20/MA50 overlays and volume bars via Plotly
@@ -139,24 +139,6 @@ Open `finsight_ai.html` in any browser — no installation needed.
 - ✅ REST API integration (Anthropic Claude)
 - ✅ Portfolio construction and equal-weight risk attribution
 - ✅ Deterministic reproducibility via seeded random number generation
-
----
-
-## 🔗 Related Projects
-
-| Project | Description | Link |
-|---------|-------------|------|
-| 📈 FinSight AI v2 | Same analytics stack — real Yahoo Finance market data | [finsight-ai-live](https://github.com/nemojain/finsight-ai-live) |
-| 📊 PerfIQ FP&A | Enterprise financial planning — 504k+ GL transactions | [fpa-command-center](https://github.com/nemojain/fpa-command-center) |
-
----
-
-## 👤 Author
-
-**Nimanshu Jain**  
-🎓 MS Information Technology & Management — UT Dallas  
-📜 Graduate Certificate in Business Analytics & Data Mining  
-🔗 [LinkedIn](https://linkedin.com/in/nemojainn/) · [GitHub](https://github.com/nemojain)
 
 ---
 
